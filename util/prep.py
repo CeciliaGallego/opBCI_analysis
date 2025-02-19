@@ -39,3 +39,72 @@ def convert_mat_to_df(datapath):
     # Create a pandas DataFrame
     df = pd.DataFrame(data_list, columns=column_names)
     return df
+
+
+
+
+
+def load_BCI_log(file_path):
+    with open(file_path, "r") as file:
+        lines = file.readlines()
+
+    if not lines:
+        return pd.DataFrame(columns=["timestamp", "loglevel", "message"])
+
+    # Get the prefix from the first line by splitting based on ":"
+    prefix = lines[0].split(":")[0] + ":"
+
+    # Parse the content into a DataFrame
+    data = []
+    combined_line = ""
+    for line in lines:
+        if line.startswith(prefix):
+            if combined_line:
+                # Process the previously combined line
+                try:
+                    # Extract timestamp: text between the first ":" and "-"
+                    timestamp = combined_line.split()[1].strip()
+                    timestamp = timestamp.rsplit("_", 1)[-1]
+                    
+                    # Extract log level: text after the first "-" and before the next ":"
+                    log_level = combined_line.split()[3].strip()
+                    
+                    # Extract message: text after the second ":"
+                    message = combined_line.split(' ',4)[4].strip()
+                    
+                    # Append parsed data
+                    data.append([timestamp, log_level, message])
+                except (IndexError, ValueError) as e:
+                    print(f"Skipping line due to error: {e}")
+                    print(f"Line: {combined_line}")
+                combined_line = ""
+            combined_line = line.strip()
+        else:
+            combined_line += " " + line.strip()
+
+    # Process the last combined line if any
+    if combined_line:
+        try:
+            # Extract timestamp: text between the first ":" and "-"
+            timestamp = combined_line.split()[1].strip()
+            timestamp = timestamp.rsplit("_", 1)[-1]
+            
+            # Extract log level: text after the first "-" and before the next ":"
+            log_level = combined_line.split()[3].strip()
+            
+            # Extract message: text after the second ":"
+            message = combined_line.split(' ',4)[4].strip()
+            
+            # Append parsed data
+            data.append([timestamp, log_level, message])
+        except (IndexError, ValueError) as e:
+            print(f"Skipping line due to error: {e}")
+            print(f"Line: {combined_line}")
+
+    # Create the DataFrame
+    df = pd.DataFrame(data, columns=["timestamp", "loglevel", "message"])
+    
+    # Convert the timestamp column to numeric
+    df['timestamp'] = pd.to_numeric(df['timestamp'], errors='coerce')
+    
+    return df
